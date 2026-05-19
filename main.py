@@ -43,4 +43,5 @@ history_array = sat.get_history_array()
 
 save_history_to_csv("data/minisat_history_half_orbit.csv", history_array)
 plot_altitude(history_array, time_unit="hours")
+plot_orbit_3d(history_array)
 plot_orbit_3d_plotly(history_array)

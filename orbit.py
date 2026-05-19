@@ -144,11 +144,13 @@ def propagate_f_and_g(orbital_elements: OrbitalElements, position_0_km, velocity
     for _ in range(30):
         f_kepler = E - e * math.sin(E) - M
         f_prime_kepler = 1 - e * math.cos(E)
-        E = E - f_kepler / f_prime_kepler
+        correction  = -f_kepler / f_prime_kepler
+        E += correction 
 
-    # Change in eccentric anomaly
-    delta_E = E - E0
-
+        if abs(correction) < 1e-12:
+            break
+        delta_E = E - E0
+        
     # Lagrange f and g coefficients
     f = 1 - (a / r0_mag) * (1 - math.cos(delta_E))
 

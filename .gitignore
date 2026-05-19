@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Generated simulation outputs
+data/*.csv
+plots/*.png
+plots/*.jpg
+plots/*.pdf
+plots/*.html
+
+# Keep folder structure
+!data/.gitkeep
+!plots/.gitkeep

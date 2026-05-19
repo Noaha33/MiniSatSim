@@ -37,7 +37,7 @@ sat.propagate_to(time_seconds)
 print(sat.get_state())
 """
 time_step = 5
-time_unit = "seconds"
+time_unit = "minutes"
 sat.propagate_history(period*.5, time_step, time_unit)
 history_array = sat.get_history_array()
 

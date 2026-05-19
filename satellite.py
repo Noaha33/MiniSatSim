@@ -31,12 +31,16 @@ class Satellite:
     
     def propagate_history(self, final_time_since_epoch, time_step, time_unit):
         self.history = []
-        if time_unit == "minutes":
-            time_step = time_step*60
-        if time_unit == "hours":
-            time_step = time_step*3600
+        if time_unit == "seconds":
+            time_step_s = time_step
+        elif time_unit == "minutes":
+            time_step_s = time_step*60
+        elif time_unit == "hours":
+            time_step_s = time_step*3600
+        else:
+            raise ValueError("Acceptable time units are, seconds, minutes and hours")
         
-        numsteps = int(final_time_since_epoch/time_step)
+        numsteps = int(final_time_since_epoch/time_step_s)
 
         times = np.linspace(0.0, final_time_since_epoch, numsteps + 1)
 

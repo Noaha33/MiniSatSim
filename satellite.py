@@ -1,6 +1,7 @@
 from orbit import propagate_keplerian_orbit
 import numpy as np
 from constants import R_EARTH
+from eclipse import check_eclipse
 
 
 class Satellite:
@@ -15,6 +16,7 @@ class Satellite:
         self.velocity_km_s = None
         self.altitude_km = None
         self.speed_km_s = None
+        self.in_eclipse = None
         self.history = []
 
     def propagate_to(self, time_since_epoch):
@@ -28,6 +30,7 @@ class Satellite:
         radius_km = np.linalg.norm(self.position_km)
         self.altitude_km = radius_km - R_EARTH
         self.speed_km_s = np.linalg.norm(self.velocity_km_s)
+        self.in_eclipse = check_eclipse(self.position_km)
     
     def propagate_history(self, final_time_since_epoch, time_step, time_unit):
         self.history = []
@@ -60,6 +63,7 @@ class Satellite:
             "velocity_km_s": self.velocity_km_s,
             "altitude_km": self.altitude_km,
             "speed_km_s": self.speed_km_s,
+            "in_eclipse": self.in_eclipse,
         }
         
     def get_history_array(self):
@@ -79,6 +83,7 @@ class Satellite:
                 velocity[2],
                 state["altitude_km"],
                 state["speed_km_s"],
+                state["in_eclipse"]
             ]
             rows.append(row)
         return np.array(rows)

@@ -1,8 +1,70 @@
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
+import imageio_ffmpeg
+matplotlib.rcParams["animation.ffmpeg_path"] = imageio_ffmpeg.get_ffmpeg_exe()
+
 import plotly.graph_objects as go
 from constants import R_EARTH
+from enviroment import get_earth_to_sun_direction
+import json
+import webbrowser
+from pathlib import Path
 
+def plot_eclipse_tracker(history_array, time_unit="minutes"):
+    """
+    Plots altitude with eclipse periods shaded, plus a binary
+    eclipse state plot below.
+    """
+    time_s = history_array[:, 0]
+    altitude_km = history_array[:, 7]
+
+    if history_array.shape[1] < 10:
+        raise ValueError("history_array must include in_eclipse column at index 9")
+
+    in_eclipse = history_array[:, 9].astype(int)
+
+    if time_unit == "seconds":
+        time = time_s
+        xlabel = "Time since epoch [s]"
+    elif time_unit == "minutes":
+        time = time_s / 60.0
+        xlabel = "Time since epoch [min]"
+    elif time_unit == "hours":
+        time = time_s / 3600.0
+        xlabel = "Time since epoch [hr]"
+    else:
+        raise ValueError("time_unit must be 'seconds', 'minutes', or 'hours'.")
+
+    fig, (ax1, ax2) = plt.subplots(
+        2, 1, sharex=True, figsize=(10, 6),
+        gridspec_kw={"height_ratios": [3, 1]}
+    )
+
+    # Altitude plot with eclipse shading
+    ax1.plot(time, altitude_km, color="C0", linewidth=1.5, label="Altitude")
+    ax1.fill_between(
+        time, altitude_km.min(), altitude_km.max(),
+        where=(in_eclipse == 1),
+        alpha=0.25, color="gray", step="post", label="Eclipse"
+    )
+    ax1.set_ylabel("Altitude [km]")
+    ax1.set_title("Satellite Altitude with Eclipse Periods")
+    ax1.grid(True)
+    ax1.legend(loc="upper right")
+
+    # Eclipse state plot
+    ax2.fill_between(time, 0, in_eclipse, step="post", alpha=0.6, color="gray")
+    ax2.plot(time, in_eclipse, drawstyle="steps-post", color="black", linewidth=1)
+    ax2.set_ylabel("State")
+    ax2.set_xlabel(xlabel)
+    ax2.set_ylim(-0.1, 1.1)
+    ax2.set_yticks([0, 1])
+    ax2.set_yticklabels(["Sunlit", "Eclipse"])
+    ax2.grid(True)
+
+    plt.tight_layout()
+    plt.show()
 
 def plot_altitude(history_array, time_unit="seconds"):
     time_s = history_array[:, 0]
@@ -256,3 +318,139 @@ def plot_orbit_3d_plotly(history_array, show_earth=True, max_points=3000):
             )
         )
     fig.show()
+def plot_orbit_animation_mp4(history_array, name="default",
+                              fps=30, max_points=500, show_earth=True,
+                              loops=1, time_unit="seconds",
+                              elev=25, azim=45, rotate=False):
+    """
+    Animated 3D orbit using matplotlib, saved as MP4.
+    Satellite is yellow when sunlit, red when in eclipse.
+
+    Parameters
+    ----------
+    elev, azim : float
+        Camera elevation and azimuth angles in degrees.
+    rotate : bool
+        If True, the camera slowly rotates around the orbit during playback.
+    """
+    from matplotlib.animation import FuncAnimation, FFMpegWriter
+    
+    output_path = f"plots/{name}.orbit_animation.mp4"
+
+    x = history_array[:, 1]
+    y = history_array[:, 2]
+    z = history_array[:, 3]
+    time_s = history_array[:, 0]
+
+    if history_array.shape[1] < 10:
+        raise ValueError("history_array must include in_eclipse column at index 9")
+    in_eclipse = history_array[:, 9].astype(int)
+
+    if time_unit == "seconds":
+        time_display = time_s
+        time_label = "s"
+    elif time_unit == "minutes":
+        time_display = time_s / 60.0
+        time_label = "min"
+    elif time_unit == "hours":
+        time_display = time_s / 3600.0
+        time_label = "hr"
+    else:
+        raise ValueError("time_unit must be 'seconds', 'minutes', or 'hours'.")
+
+    if len(x) > max_points:
+        idx = np.linspace(0, len(x) - 1, max_points).astype(int)
+        x, y, z = x[idx], y[idx], z[idx]
+        time_display = time_display[idx]
+        in_eclipse = in_eclipse[idx]
+
+    n = len(x)
+    total_frames = n * loops
+
+    # White figure
+    fig = plt.figure(figsize=(9, 9), facecolor="white")
+    ax = fig.add_subplot(111, projection="3d", facecolor="white")
+
+    max_extent = max(np.max(np.abs(x)), np.max(np.abs(y)),
+                     np.max(np.abs(z)), R_EARTH)
+    axis_limit = 1.1 * max_extent
+    ax.set_xlim(-axis_limit, axis_limit)
+    ax.set_ylim(-axis_limit, axis_limit)
+    ax.set_zlim(-axis_limit, axis_limit)
+    ax.set_box_aspect([1, 1, 1])
+
+    # Initial camera angle
+    ax.view_init(elev=elev, azim=azim)
+
+    if show_earth:
+        u = np.linspace(0, 2 * np.pi, 40)
+        v = np.linspace(0, np.pi, 20)
+        ex = R_EARTH * np.outer(np.cos(u), np.sin(v))
+        ey = R_EARTH * np.outer(np.sin(u), np.sin(v))
+        ez = R_EARTH * np.outer(np.ones_like(u), np.cos(v))
+        ax.plot_surface(ex, ey, ez, color="royalblue",
+                        alpha=0.4, linewidth=0, antialiased=True)
+
+    ax.plot(x, y, z, color="royalblue", linewidth=1, alpha=0.6, label="Orbit")
+
+    sun_dir = get_earth_to_sun_direction()
+    sun_pos = sun_dir * 1.05 * max_extent
+    ax.scatter(sun_pos[0], sun_pos[1], sun_pos[2],
+               color="gold", s=200, edgecolors="orange", linewidths=1.5,
+               label="Sun (direction)")
+
+    # Style for white background
+    ax.set_xlabel("ECI x [km]", color="black")
+    ax.set_ylabel("ECI y [km]", color="black")
+    ax.set_zlabel("ECI z [km]", color="black")
+    ax.tick_params(colors="black")
+    ax.xaxis.pane.set_facecolor((1.0, 1.0, 1.0, 1.0))
+    ax.yaxis.pane.set_facecolor((1.0, 1.0, 1.0, 1.0))
+    ax.zaxis.pane.set_facecolor((1.0, 1.0, 1.0, 1.0))
+    ax.xaxis.pane.set_edgecolor("lightgray")
+    ax.yaxis.pane.set_edgecolor("lightgray")
+    ax.zaxis.pane.set_edgecolor("lightgray")
+    ax.set_title("Satellite Orbit in ECI Frame", color="black")
+
+    sat = ax.scatter([x[0]], [y[0]], [z[0]],
+                     color="gold", s=80, edgecolors="black", linewidths=1)
+
+    info_text = ax.text2D(0.02, 0.95, "", transform=ax.transAxes,
+                          color="black", fontsize=11,
+                          verticalalignment="top",
+                          bbox=dict(facecolor="white", alpha=0.8,
+                                    edgecolor="black", boxstyle="round,pad=0.4"))
+
+    ax.legend(loc="upper right", facecolor="white", edgecolor="black",
+              labelcolor="black")
+
+    def update(frame):
+        i = frame % n
+        sat._offsets3d = ([x[i]], [y[i]], [z[i]])
+        if in_eclipse[i] == 1:
+            sat.set_color("red")
+            state_str = "ECLIPSE"
+            state_color = "red"
+        else:
+            sat.set_color("gold")
+            state_str = "Sunlit"
+            state_color = "darkgoldenrod"
+
+        info_text.set_text(f"t = {time_display[i]:.1f} {time_label}\nState: {state_str}")
+        info_text.set_color(state_color)
+
+        # Slow camera rotation if enabled
+        if rotate:
+            ax.view_init(elev=elev, azim=azim + frame * (360 / total_frames))
+
+        return sat, info_text
+
+    anim = FuncAnimation(fig, update, frames=total_frames,
+                         interval=1000 / fps, blit=False)
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    writer = FFMpegWriter(fps=fps, bitrate=2400)
+    print(f"Rendering {total_frames} frames ({loops} loop{'s' if loops > 1 else ''}) to {output_path}...")
+    anim.save(output_path, writer=writer, dpi=120)
+    plt.close(fig)
+    print(f"Saved to {output_path}")

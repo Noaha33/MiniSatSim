@@ -10,6 +10,7 @@ plots/*.png
 plots/*.jpg
 plots/*.pdf
 plots/*.html
+plots/*.mp4
 
 # Keep folder structure
 !data/.gitkeep

@@ -17,11 +17,17 @@ I am starting with the Keplerian orbit first I may add J2, SRB, drag perturbatio
 
 ## Current Notes
 
-`plotting.py` and `telemetry.py` were written with AI. 
+`plotting.py`, `telemetry.py`, `constants.py` were written with AI. 
 
 All other code has been written by me.
 
-To use the 3D Plotly plots (higly recommended), run:
+## Requirements
 
+Python dependencies:
 ```bash
-pip install plotly
+pip install -r requirements.txt
+```
+Outputs:
+- CSV telemetry in `data/`
+- MP4 orbit animation in `plots/`
+- Interactive plots in browser / matplotlib window

@@ -17,7 +17,7 @@ I am starting with the Keplerian orbit first I may add J2, SRB, drag perturbatio
 
 ## Current Notes
 
-`plotting.py` and `telemetry.py` were written with AI. 
+`plotting.py`, `telemetry.py`, `constants.py` were written with AI. 
 
 All other code has been written by me.
 

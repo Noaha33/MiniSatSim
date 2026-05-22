@@ -6,7 +6,7 @@ matplotlib.rcParams["animation.ffmpeg_path"] = imageio_ffmpeg.get_ffmpeg_exe()
 
 import plotly.graph_objects as go
 from constants import R_EARTH
-from enviroment import get_earth_to_sun_direction
+from environment import get_earth_to_sun_direction
 import json
 import webbrowser
 from pathlib import Path
@@ -321,10 +321,16 @@ def plot_orbit_3d_plotly(history_array, show_earth=True, max_points=3000):
 def plot_orbit_animation_mp4(history_array, name="default",
                               fps=30, max_points=500, show_earth=True,
                               loops=1, time_unit="seconds",
-                              elev=25, azim=45, rotate=False):
+                              elev=25, azim=45, rotate=False,
+                              show_body_axes=True, body_axis_scale=0.12):
     """
     Animated 3D orbit using matplotlib, saved as MP4.
     Satellite is yellow when sunlit, red when in eclipse.
+
+    If history_array has 19+ columns, columns 10-18 are interpreted as
+    body axes in ECI (body_x[0:3], body_y[3:6], body_z[6:9] each a unit
+    vector), and red/green/blue arrows are drawn from the satellite for
+    body X/Y/Z respectively.
 
     Parameters
     ----------
@@ -332,19 +338,21 @@ def plot_orbit_animation_mp4(history_array, name="default",
         Camera elevation and azimuth angles in degrees.
     rotate : bool
         If True, the camera slowly rotates around the orbit during playback.
+    show_body_axes : bool
+        If True and attitude columns are present, draw the body frame.
+    body_axis_scale : float
+        Body axis arrow length as a fraction of plot half-extent.
     """
     from matplotlib.animation import FuncAnimation, FFMpegWriter
+    from matplotlib.lines import Line2D
     
     output_path = f"plots/{name}.orbit_animation.mp4"
 
-    x = history_array[:, 1]
-    y = history_array[:, 2]
-    z = history_array[:, 3]
-    time_s = history_array[:, 0]
-
     if history_array.shape[1] < 10:
         raise ValueError("history_array must include in_eclipse column at index 9")
-    in_eclipse = history_array[:, 9].astype(int)
+
+    has_attitude = show_body_axes and history_array.shape[1] >= 19
+    time_s = history_array[:, 0]
 
     if time_unit == "seconds":
         time_display = time_s
@@ -358,11 +366,23 @@ def plot_orbit_animation_mp4(history_array, name="default",
     else:
         raise ValueError("time_unit must be 'seconds', 'minutes', or 'hours'.")
 
-    if len(x) > max_points:
-        idx = np.linspace(0, len(x) - 1, max_points).astype(int)
-        x, y, z = x[idx], y[idx], z[idx]
-        time_display = time_display[idx]
-        in_eclipse = in_eclipse[idx]
+    # Single downsample index applied to every quantity so they stay aligned
+    n_total = len(history_array)
+    if n_total > max_points:
+        idx = np.linspace(0, n_total - 1, max_points).astype(int)
+    else:
+        idx = np.arange(n_total)
+
+    x = history_array[idx, 1]
+    y = history_array[idx, 2]
+    z = history_array[idx, 3]
+    time_display = time_display[idx]
+    in_eclipse = history_array[idx, 9].astype(int)
+
+    if has_attitude:
+        body_x_eci = history_array[idx, 10:13]
+        body_y_eci = history_array[idx, 13:16]
+        body_z_eci = history_array[idx, 16:19]
 
     n = len(x)
     total_frames = n * loops
@@ -374,6 +394,7 @@ def plot_orbit_animation_mp4(history_array, name="default",
     max_extent = max(np.max(np.abs(x)), np.max(np.abs(y)),
                      np.max(np.abs(z)), R_EARTH)
     axis_limit = 1.1 * max_extent
+    arrow_len = body_axis_scale * axis_limit
     ax.set_xlim(-axis_limit, axis_limit)
     ax.set_ylim(-axis_limit, axis_limit)
     ax.set_zlim(-axis_limit, axis_limit)
@@ -421,7 +442,20 @@ def plot_orbit_animation_mp4(history_array, name="default",
                           bbox=dict(facecolor="white", alpha=0.8,
                                     edgecolor="black", boxstyle="round,pad=0.4"))
 
-    ax.legend(loc="upper right", facecolor="white", edgecolor="black",
+    # Body axis quivers (3D matplotlib quivers can't be updated in place;
+    # we remove and recreate them each frame, holding them in a dict).
+    body_quivers = {"x": None, "y": None, "z": None}
+    body_axis_colors = {"x": "red", "y": "limegreen", "z": "blue"}
+
+    # Legend handles for body axes (proxy artists, since quiver legends are awkward)
+    legend_handles, legend_labels = ax.get_legend_handles_labels()
+    if has_attitude:
+        for axis_name, color in body_axis_colors.items():
+            legend_handles.append(Line2D([0], [0], color=color, linewidth=2))
+            legend_labels.append(f"Body {axis_name.upper()}")
+
+    ax.legend(legend_handles, legend_labels,
+              loc="upper right", facecolor="white", edgecolor="black",
               labelcolor="black")
 
     def update(frame):
@@ -438,6 +472,23 @@ def plot_orbit_animation_mp4(history_array, name="default",
 
         info_text.set_text(f"t = {time_display[i]:.1f} {time_label}\nState: {state_str}")
         info_text.set_color(state_color)
+
+        if has_attitude:
+            # Remove last frame's arrows before drawing new ones
+            for key, q in body_quivers.items():
+                if q is not None:
+                    q.remove()
+            body_vecs = {"x": body_x_eci, "y": body_y_eci, "z": body_z_eci}
+            for key, vecs in body_vecs.items():
+                body_quivers[key] = ax.quiver(
+                    x[i], y[i], z[i],
+                    vecs[i, 0] * arrow_len,
+                    vecs[i, 1] * arrow_len,
+                    vecs[i, 2] * arrow_len,
+                    color=body_axis_colors[key],
+                    linewidth=2,
+                    arrow_length_ratio=0.25,
+                )
 
         # Slow camera rotation if enabled
         if rotate:

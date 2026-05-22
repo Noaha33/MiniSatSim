@@ -149,7 +149,7 @@ def propagate_f_and_g(orbital_elements: OrbitalElements, position_0_km, velocity
 
         if abs(correction) < 1e-12:
             break
-        delta_E = E - E0
+    delta_E = E - E0
         
     # Lagrange f and g coefficients
     f = 1 - (a / r0_mag) * (1 - math.cos(delta_E))

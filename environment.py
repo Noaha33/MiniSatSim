@@ -23,3 +23,8 @@ def get_earth_to_sun_direction():
     earth_position = get_earth_position_eci()
     sun_vector = sun_position-earth_position
     return normalize(sun_vector)
+
+def get_nadir_point_direction(sat_position_km):
+    earth_position = get_earth_position_eci()
+    nadir_vector = earth_position - sat_position_km 
+    return normalize(nadir_vector)

@@ -16,6 +16,7 @@ import math
 from orbit import OrbitalElements, compute_orbital_period
 from satellite import Satellite
 from telemetry import save_history_to_csv
+from attitude import AttitudeCommand
 from plotting import *
 
 # Output options
@@ -61,7 +62,7 @@ TIME_UNIT = "minutes"
 # Set what percent of orbital period should be modeled 
 # 0.5 = half and orbit
 # 2.0 = two orbits (no pertubations or anything really intresting yet)
-ORBITAL_PERIOD_FRAC = 0.5
+ORBITAL_PERIOD_FRAC = 1
 
 # Set CSV output path
 OUTPUT_CSV_FILE = "data/minisat_history.csv"
@@ -72,9 +73,9 @@ OUTPUT_CSV_FILE = "data/minisat_history.csv"
 initial_orbit = OrbitalElements(
     semi_major_axis_km=17000.0,
     eccentricity=0.5,
-    inclination_rad=math.radians(51.6),
+    inclination_rad=math.radians(81.6),
     raan_rad=math.radians(5.6),
-    argument_of_perigee_rad=math.radians(6.7),
+    argument_of_perigee_rad=math.radians(67.7),
     true_anomaly_rad=math.radians(6.7),
 )
 
@@ -85,11 +86,24 @@ initial_orbit = OrbitalElements(
 
 orbital_period_s = compute_orbital_period(initial_orbit)
 
+attitude_command = AttitudeCommand(
+    mode="Sun Track",
+    body_axis="+X",
+)
+
+attitude_command2 = AttitudeCommand(
+    mode="Nadir Track",
+    body_axis="+Z",
+)
+
 sat = Satellite(
     name=SATELLITE_NAME,
     orbital_elements=initial_orbit,
     epoch=EPOCH,
     central_body=CENTRAL_BODY,
+    use_eclipse=True,
+    use_attitude=True,
+    attitude_command = attitude_command,
 )
 
 print(f"Running simulation for {SATELLITE_NAME}")
@@ -127,7 +141,7 @@ if MAKE_STATIC_ANIMATION_MP4:
     plot_orbit_animation_mp4(
         history_array,
         name="static",
-        fps=60,
+        fps=30,
         max_points=1300,
         loops=2,
         time_unit="hours",
@@ -140,9 +154,9 @@ if MAKE_DYNAMIC_ANIMATION_MP4:
     plot_orbit_animation_mp4(
         history_array,
         name="dynamic",
-        fps=60,
+        fps=30,
         max_points=1300,
-        loops=2,
+        loops=1,
         time_unit="hours",
         rotate=True,
     )

@@ -105,6 +105,13 @@ class Satellite:
     def get_in_eclipse(self):
         return self.in_eclipse
     
+    def get_attitude_axes_for_telemetry(self, attitude):
+        if attitude is None:
+            nan_axis = np.array([np.nan, np.nan, np.nan])
+            return nan_axis, nan_axis, nan_axis
+
+        return attitude.body_x_eci, attitude.body_y_eci, attitude.body_z_eci
+    
     def get_attitude(self):
         return self.attitude
         
@@ -114,6 +121,9 @@ class Satellite:
         for state in self.history:
             position = state["position_km"]
             velocity = state["velocity_km_s"]
+            attitude = state["attitude"]
+            
+            body_x, body_y, body_z = self.get_attitude_axes_for_telemetry(attitude)
 
             row = [
                 state["time_since_epoch"],
@@ -125,8 +135,18 @@ class Satellite:
                 velocity[2],
                 state["altitude_km"],
                 state["speed_km_s"],
-                state["in_eclipse"]
+                state["in_eclipse"],
+                body_x[0],
+                body_x[1],
+                body_x[2],
+                body_y[0],
+                body_y[1],
+                body_y[2],
+                body_z[0],
+                body_z[1],
+                body_z[2],
             ]
+            
             rows.append(row)
         return np.array(rows)
 

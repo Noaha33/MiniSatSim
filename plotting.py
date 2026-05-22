@@ -6,7 +6,7 @@ matplotlib.rcParams["animation.ffmpeg_path"] = imageio_ffmpeg.get_ffmpeg_exe()
 
 import plotly.graph_objects as go
 from constants import R_EARTH
-from enviroment import get_earth_to_sun_direction
+from environment import get_earth_to_sun_direction
 import json
 import webbrowser
 from pathlib import Path

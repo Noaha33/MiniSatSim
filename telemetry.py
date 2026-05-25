@@ -12,6 +12,7 @@ def save_history_to_csv(filename, history_array):
     "body_x_eci_x,body_x_eci_y,body_x_eci_z,"
     "body_y_eci_x,body_y_eci_y,body_y_eci_z,"
     "body_z_eci_x,body_z_eci_y,body_z_eci_z"
+    
     )
 
     np.savetxt(

@@ -29,6 +29,21 @@ class AttitudeState:
     def body_neg_z_eci(self) -> np.ndarray:
         return -self.body_z_eci
     
+    def get_body_axis(self, axis: str) -> np.ndarray: 
+        
+        body_axis_map = {
+            "+X": self.body_x_eci,
+            "-X": self.body_neg_x_eci,
+            "+Y": self.body_y_eci,
+            "-Y": self.body_neg_y_eci,
+            "+Z": self.body_z_eci,
+            "-Z": self.body_neg_z_eci,
+        }
+        if axis not in body_axis_map:
+            raise ValueError(f"axis must be one of {list(body_axis_map)}")
+        
+        return body_axis_map[axis]
+    
 # Tracking method allows user to choose body_axis they desire 
 # Depending on mode (sun, nadir, moon, more later) desired body axis will point to to the 
 # Desired position in eci coords 

@@ -26,7 +26,9 @@ SAVE_CSV = True
 
 # Plot Altitude to current non-rotating perfectly spherical earth at [0,0,0]
 # I plan to incorperate WGS-84 and accurate altitude calculations 
-PLOT_ALTITUDE = True
+PLOT_ALTITUDE = False
+
+PLOT_POWER = True
 
 # Plots Eclipse time history 
 # I plan to propagate both earth and sun and use a more accurate eclipse model in the future
@@ -34,16 +36,16 @@ PLOT_ECLIPSE = True
 
 # Plots the orbit in matplotlib window
 # Laggy unrecommended
-PLOT_3D_MATPLOTLIB = True
+PLOT_3D_MATPLOTLIB = False
 # Same as above plots in local host browser recommended 
-PLOT_3D_PLOTLY = True
+PLOT_3D_PLOTLY = False
 
 # Plots and saves a static frame animation of satellite orbit and eclipse timings 
-MAKE_STATIC_ANIMATION_MP4 = True
+MAKE_STATIC_ANIMATION_MP4 = False
 
 # Plots and saves a dynamic (frame rotates) frame animation of satellite orbit and eclipse timings 
 # Kinda cool but nauseating
-MAKE_DYNAMIC_ANIMATION_MP4 = True
+MAKE_DYNAMIC_ANIMATION_MP4 = False
 
 
 # Simulation setup
@@ -88,13 +90,20 @@ orbital_period_s = compute_orbital_period(initial_orbit)
 
 attitude_command = AttitudeCommand(
     mode="Sun Track",
-    body_axis="+X",
+    body_axis="X",
 )
 
 attitude_command2 = AttitudeCommand(
     mode="Nadir Track",
     body_axis="+Z",
 )
+
+from power import SolarPanel
+
+solar_panels = [
+    SolarPanel(surface_area_m_2=0.5, cell_efficiency=0.30, panel_normal="+X"),
+    SolarPanel(surface_area_m_2=0.5, cell_efficiency=0.30, panel_normal="+X"),
+]
 
 sat = Satellite(
     name=SATELLITE_NAME,
@@ -103,7 +112,9 @@ sat = Satellite(
     central_body=CENTRAL_BODY,
     use_eclipse=True,
     use_attitude=True,
-    attitude_command = attitude_command,
+    attitude_command = attitude_command2,
+    use_solar_panels = True,
+    solar_panels=solar_panels,
 )
 
 print(f"Running simulation for {SATELLITE_NAME}")
@@ -133,6 +144,9 @@ if PLOT_3D_MATPLOTLIB:
 
 if PLOT_3D_PLOTLY:
     plot_orbit_3d_plotly(history_array)
+
+if PLOT_POWER:
+    plot_power(history_array, time_unit='hours')
 
 # Max points sets how many points are graphed this can downsize the data
 # Loops is animation loops 

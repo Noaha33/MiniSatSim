@@ -15,7 +15,7 @@ import math
 
 from orbit import OrbitalElements, compute_orbital_period
 from satellite import Satellite
-from telemetry import save_history_to_csv
+from telemetry import save_history_to_csv, Telemetry
 from attitude import AttitudeCommand
 from plotting import *
 
@@ -128,6 +128,9 @@ sat.propagate_history(
 )
 
 history_array = sat.get_history_array()
+tlm = Telemetry(history_array)
+tlm.summary(scenario_name=SATELLITE_NAME)
+
 
 if SAVE_CSV:
     save_history_to_csv(OUTPUT_CSV_FILE, history_array)

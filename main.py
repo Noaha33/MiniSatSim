@@ -1,6 +1,6 @@
 """
-Current file for running satellite scenarios
-I play to more to json and jupyter notebooks in the futire 
+Outdated file for running satellite scenarios
+See scenarios.py for running scenarios this file is mainly for debugging and sanity checks 
 
 This file defines:
 - the initial orbit

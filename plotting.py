@@ -505,3 +505,33 @@ def plot_orbit_animation_mp4(history_array, name="default",
     anim.save(output_path, writer=writer, dpi=120)
     plt.close(fig)
     print(f"Saved to {output_path}")
+    
+def plot_power(history_array, time_unit="seconds"):
+    """Plot instantaneous solar panel power generation vs time."""
+    times = history_array[:, 0]
+    in_eclipse = history_array[:, 9]
+    power_w = history_array[:, 19]  # instantaneous_power_W column
+
+    if time_unit == "minutes":
+        times = times / 60.0
+    elif time_unit == "hours":
+        times = times / 3600.0
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.plot(times, power_w, color="tab:orange", linewidth=1.5, label="Total panel power")
+
+    # Shade eclipse regions
+    eclipse_mask = in_eclipse > 0.5
+    if np.any(eclipse_mask):
+        ax.fill_between(times, 0, np.nanmax(power_w) * 1.05,
+                        where=eclipse_mask, color="gray", alpha=0.25,
+                        label="Eclipse")
+
+    ax.set_xlabel(f"Time ({time_unit})")
+    ax.set_ylabel("Instantaneous power (W)")
+    ax.set_title("Solar panel power generation")
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc="best")
+    ax.set_ylim(bottom=0)
+    plt.tight_layout()
+    plt.show()

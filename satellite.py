@@ -3,7 +3,7 @@ import numpy as np
 from constants import R_EARTH
 from eclipse import check_eclipse
 from attitude import AttitudeCommand, update_attitude
-
+from power import SolarPanel
 
 class Satellite:
     def __init__(self, 
@@ -13,17 +13,21 @@ class Satellite:
                 central_body, 
                 use_eclipse=True, 
                 use_attitude=False, 
-                attitude_command = None
+                attitude_command = None,
+                use_solar_panels = False,
+                solar_panels = None,
                 ):
         
         self.name = name
         self.orbital_elements = orbital_elements
         self.epoch = epoch
         self.central_body = central_body
+        self.solar_panels = solar_panels if solar_panels is not None else []
         
         self.use_eclipse = use_eclipse
         self.use_attitude = use_attitude
-        self.attitude_command = attitude_command        
+        self.attitude_command = attitude_command 
+        self.use_solar_panels = use_solar_panels      
         
         self.time_since_epoch = 0.0
         self.position_km = None
@@ -32,11 +36,15 @@ class Satellite:
         self.altitude_km = None
         self.speed_km_s = None
         self.in_eclipse = None
+        self.instantaneous_power_W = None
         self.history = []
         
         if self.use_attitude and attitude_command is None:
             raise ValueError("To use attitude an attitude command must be given there is no passive attitude propagation yet")
 
+        if self.use_solar_panels and (not self.use_eclipse or not self.use_attitude):
+            raise ValueError("To use solar panel model eclipse and attitude modeling are required")
+        
     def propagate_to(self, time_since_epoch):
         self.time_since_epoch = time_since_epoch
 
@@ -59,7 +67,18 @@ class Satellite:
                                             attitude_command = self.attitude_command)
         else:
             self.attitude = None
-    
+        
+        if self.use_solar_panels:
+            self.instantaneous_power_W = 0
+            
+            for panel in self.solar_panels:
+                self.instantaneous_power_W += panel.compute_inst_power_W(
+                    self.attitude,
+                    self.position_km,
+                    self.in_eclipse
+                )    
+        else: 
+            self.instantaneous_power_W = None
     def propagate_history(self, final_time_since_epoch, time_step, time_unit):
         self.history = []
         if time_unit == "seconds":
@@ -93,6 +112,7 @@ class Satellite:
             "speed_km_s": self.speed_km_s,
             "in_eclipse": self.in_eclipse,
             "attitude": self.attitude,
+            "instantaneous_power_W": self.instantaneous_power_W
         }
         
     # FOR FUTURE TO SELF PLEASE START ADDING FRAMES FOR THE FUTURE    
@@ -145,6 +165,7 @@ class Satellite:
                 body_z[0],
                 body_z[1],
                 body_z[2],
+                state["instantaneous_power_W"] if state["instantaneous_power_W"] is not None else np.nan,
             ]
             
             rows.append(row)

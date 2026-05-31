@@ -26,7 +26,7 @@ SAVE_CSV = True
 
 # Plot Altitude to current non-rotating perfectly spherical earth at [0,0,0]
 # I plan to incorperate WGS-84 and accurate altitude calculations 
-PLOT_ALTITUDE = False
+PLOT_ALTITUDE = True
 
 PLOT_POWER = True
 
@@ -38,10 +38,10 @@ PLOT_ECLIPSE = True
 # Laggy unrecommended
 PLOT_3D_MATPLOTLIB = False
 # Same as above plots in local host browser recommended 
-PLOT_3D_PLOTLY = False
+PLOT_3D_PLOTLY = True
 
 # Plots and saves a static frame animation of satellite orbit and eclipse timings 
-MAKE_STATIC_ANIMATION_MP4 = False
+MAKE_STATIC_ANIMATION_MP4 = True
 
 # Plots and saves a dynamic (frame rotates) frame animation of satellite orbit and eclipse timings 
 # Kinda cool but nauseating
@@ -90,12 +90,12 @@ orbital_period_s = compute_orbital_period(initial_orbit)
 
 attitude_command = AttitudeCommand(
     mode="Sun Track",
-    body_axis="X",
+    body_axis="+X",
 )
 
 attitude_command2 = AttitudeCommand(
     mode="Nadir Track",
-    body_axis="+Z",
+    body_axis="-Z",
 )
 
 from power import SolarPanel
@@ -112,7 +112,7 @@ sat = Satellite(
     central_body=CENTRAL_BODY,
     use_eclipse=True,
     use_attitude=True,
-    attitude_command = attitude_command2,
+    attitude_command = attitude_command,
     use_solar_panels = True,
     solar_panels=solar_panels,
 )

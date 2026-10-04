@@ -31,3 +31,9 @@ Outputs:
 - CSV telemetry in `data/`
 - MP4 orbit animation in `plots/`
 - Interactive plots in browser / matplotlib window
+
+## How to run
+Python root: 
+
+The following command runs a simplified orbit propagation of the ISS. Only the orbit and eclipse tracking is modeled. 
+'python -m scenarios.iss_sat'

@@ -64,7 +64,7 @@ TIME_UNIT = "minutes"
 # Set what percent of orbital period should be modeled 
 # 0.5 = half and orbit
 # 2.0 = two orbits (no pertubations or anything really intresting yet)
-ORBITAL_PERIOD_FRAC = 1
+ORBITAL_PERIOD_FRAC = 2
 
 # Set CSV output path
 OUTPUT_CSV_FILE = "data/minisat_history.csv"

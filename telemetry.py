@@ -56,6 +56,9 @@ TELEMETRY_COLUMNS = [
     ("body_z_eci_z",          "-"),
 
     ("instantaneous_power_W", "W"),
+    ("total_power_draw_W",    "W"),
+    ("net_power_W",           "W"),
+    ("battery_soc_percent",   "%"),
 ]
 
 COLUMN_NAMES = [name for name, _ in TELEMETRY_COLUMNS]
@@ -98,6 +101,11 @@ def _flatten_state(state):
         bz[0], bz[1], bz[2],
         np.nan if power_w is None else float(power_w),
     ]
+    row.extend([
+        state.get("total_power_draw_W", np.nan),
+        state.get("net_power_W", np.nan),
+        state.get("battery_soc_percent", np.nan),
+    ])
     return row
 
 

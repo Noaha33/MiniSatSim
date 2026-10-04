@@ -41,3 +41,38 @@ class SolarPanel:
         
         solar_irradiance = SOLAR_FLUX_W_M2 * (AU/abs_distance)**2
         return solar_irradiance
+
+
+@dataclass
+class PowerLoad:
+    name: str
+    power_draw_W: float
+    duty_cycle: float = 1.0
+
+    def compute_average_power_W(self):
+        return self.power_draw_W * self.duty_cycle
+
+
+@dataclass
+class Battery:
+    capacity_Wh: float
+    initial_soc_percent: float = 100.0
+    max_charge_percent: float = 100.0
+
+    def __post_init__(self):
+        self.reset()
+
+    def reset(self):
+        self.energy_Wh = self.capacity_Wh * self.initial_soc_percent / 100.0
+
+    @property
+    def soc_percent(self):
+        return 100.0 * self.energy_Wh / self.capacity_Wh
+
+    def update(self, net_power_W, time_step_s):
+        energy_change_Wh = net_power_W * time_step_s / 3600.0
+        max_energy_Wh = self.capacity_Wh * self.max_charge_percent / 100.0
+        self.energy_Wh = float(np.clip(
+            self.energy_Wh + energy_change_Wh, 0.0, max_energy_Wh
+        ))
+        return self.soc_percent

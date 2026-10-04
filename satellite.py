@@ -16,6 +16,8 @@ class Satellite:
                 attitude_command = None,
                 use_solar_panels = False,
                 solar_panels = None,
+                power_loads = None,
+                battery = None,
                 ):
         
         self.name = name
@@ -24,6 +26,14 @@ class Satellite:
         self.central_body = central_body
         self.solar_panels = solar_panels if solar_panels is not None else []
         
+        self.power_loads = power_loads if power_loads is not None else []
+        self.battery = battery
+        self.total_power_draw_W = 0.0
+        self.net_power_W = 0.0
+        self.battery_soc_percent = battery.soc_percent if battery is not None else np.nan
+        self._power_time_s = None
+        self._previous_net_power_W = None
+
         self.use_eclipse = use_eclipse
         self.use_attitude = use_attitude
         self.attitude_command = attitude_command 
@@ -79,8 +89,28 @@ class Satellite:
                 )    
         else: 
             self.instantaneous_power_W = None
+        self.total_power_draw_W = sum(
+            load.compute_average_power_W() for load in self.power_loads
+        )
+        generated_power_W = self.instantaneous_power_W if self.use_solar_panels else 0.0
+        self.net_power_W = generated_power_W - self.total_power_draw_W
+        if self.battery is not None:
+            if self._power_time_s is not None:
+                # Treat the previous sample's power as constant over this interval.
+                self.battery.update(
+                    self._previous_net_power_W,
+                    time_since_epoch - self._power_time_s,
+                )
+            self.battery_soc_percent = self.battery.soc_percent
+        self._power_time_s = time_since_epoch
+        self._previous_net_power_W = self.net_power_W
+
     def propagate_history(self, final_time_since_epoch, time_step, time_unit):
         self.history = []
+        self._power_time_s = None
+        self._previous_net_power_W = None
+        if self.battery is not None:
+            self.battery.reset()
         if time_unit == "seconds":
             time_step_s = time_step
         elif time_unit == "minutes":
@@ -90,9 +120,12 @@ class Satellite:
         else:
             raise ValueError("Acceptable time units are, seconds, minutes and hours")
         
-        num_steps = int(final_time_since_epoch/time_step_s)
-
-        times = np.linspace(0.0, final_time_since_epoch, num_steps + 1)
+        if not np.isfinite(time_step_s) or time_step_s <= 0:
+            raise ValueError("time_step must be finite and positive")
+        if not np.isfinite(final_time_since_epoch) or final_time_since_epoch < 0:
+            raise ValueError("final_time_since_epoch must be finite and nonnegative")
+        times = np.append(np.arange(0.0, final_time_since_epoch, time_step_s),
+                          final_time_since_epoch)
 
         for time_since_epoch in times:
             self.propagate_to(time_since_epoch)
@@ -112,7 +145,10 @@ class Satellite:
             "speed_km_s": self.speed_km_s,
             "in_eclipse": self.in_eclipse,
             "attitude": self.attitude,
-            "instantaneous_power_W": self.instantaneous_power_W
+            "instantaneous_power_W": self.instantaneous_power_W,
+            "total_power_draw_W": self.total_power_draw_W,
+            "net_power_W": self.net_power_W,
+            "battery_soc_percent": self.battery_soc_percent
         }
         
     # FOR FUTURE TO SELF PLEASE START ADDING FRAMES FOR THE FUTURE    
@@ -136,39 +172,5 @@ class Satellite:
         return self.attitude
         
     def get_history_array(self):
-        rows = []
-
-        for state in self.history:
-            position = state["position_km"]
-            velocity = state["velocity_km_s"]
-            attitude = state["attitude"]
-            
-            body_x, body_y, body_z = self.get_attitude_axes_for_telemetry(attitude)
-
-            row = [
-                state["time_since_epoch"],
-                position[0],
-                position[1],
-                position[2],
-                velocity[0],
-                velocity[1],
-                velocity[2],
-                state["altitude_km"],
-                state["speed_km_s"],
-                state["in_eclipse"],
-                body_x[0],
-                body_x[1],
-                body_x[2],
-                body_y[0],
-                body_y[1],
-                body_y[2],
-                body_z[0],
-                body_z[1],
-                body_z[2],
-                state["instantaneous_power_W"] if state["instantaneous_power_W"] is not None else np.nan,
-            ]
-            
-            rows.append(row)
-        return np.array(rows)
-
-        
+        from telemetry import history_to_array
+        return history_to_array(self.history)

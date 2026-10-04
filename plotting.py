@@ -1,10 +1,7 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-import imageio_ffmpeg
-matplotlib.rcParams["animation.ffmpeg_path"] = imageio_ffmpeg.get_ffmpeg_exe()
 
-import plotly.graph_objects as go
 from constants import R_EARTH
 from environment import get_earth_to_sun_direction
 import json
@@ -188,6 +185,7 @@ def plot_orbit_3d_plotly(history_array, show_earth=True, max_points=3000):
         altitude_km = altitude_km[indices]
         speed_km_s = speed_km_s[indices]
 
+    import plotly.graph_objects as go
     fig = go.Figure()
 
     # Orbit trajectory
@@ -343,6 +341,8 @@ def plot_orbit_animation_mp4(history_array, name="default",
     body_axis_scale : float
         Body axis arrow length as a fraction of plot half-extent.
     """
+    import imageio_ffmpeg
+    matplotlib.rcParams["animation.ffmpeg_path"] = imageio_ffmpeg.get_ffmpeg_exe()
     from matplotlib.animation import FuncAnimation, FFMpegWriter
     from matplotlib.lines import Line2D
     
@@ -535,3 +535,22 @@ def plot_power(history_array, time_unit="seconds"):
     ax.set_ylim(bottom=0)
     plt.tight_layout()
     plt.show()
+
+
+def plot_battery_soc(history_array, time_unit="hours", max_charge_percent=100.0):
+    """Plot battery state of charge and its configured charging limit."""
+    from telemetry import COLUMN_INDEX
+    scales = {"seconds": 1.0, "minutes": 60.0, "hours": 3600.0}
+    if time_unit not in scales:
+        raise ValueError("time_unit must be seconds, minutes, or hours")
+    time = history_array[:, 0] / scales[time_unit]
+    soc = history_array[:, COLUMN_INDEX["battery_soc_percent"]]
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.plot(time, soc, label="Battery SOC")
+    ax.set(xlabel=f"Time ({time_unit})", ylabel="State of charge (%)",
+           title="Battery State of Charge", ylim=(0, 105))
+    ax.grid(True, alpha=0.3)
+    ax.legend()
+    fig.tight_layout()
+    plt.show()
+    return fig, ax
